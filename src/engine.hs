@@ -1,5 +1,6 @@
 module Swai where
 
+import Data.Maybe
 import Data.Word
 
 data Board = Board { whitePieces    :: {-# UNPACK #-} !Word64
@@ -14,6 +15,8 @@ data Board = Board { whitePieces    :: {-# UNPACK #-} !Word64
                    , enPassant      :: [ Int ]
                    , currentPlayer  :: Boolean -- White is true 
                    } deriving (Show, Eq)
+
+{- Piece Getters -}
 
 whiteKing :: Board -> Word64
 whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = wh & ks
@@ -51,6 +54,7 @@ whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = wh & ps
 blackPawns :: Board -> Word64
 whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = bl & ps
 
+<<<<<<< HEAD
 startingBoard :: Board
 startingBoard = Board 0xffff000000000000
                       0x000000000000ffff
@@ -65,4 +69,15 @@ startingBoard = Board 0xffff000000000000
                       True
 
 
+{-
+boardToString :: Board -> [ Char ]
+boardToString = boardToString' 64
+
+boardToString' :: Int -> Board -> [ Char ]
+boardToString' n board =
+
+getPieceAtLocation :: Board -> Int -> Char
+getPieceAtLocation board idx =
+    if (whitePieces board) | (blackPieces board) 
+-}
 
