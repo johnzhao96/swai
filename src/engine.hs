@@ -65,25 +65,25 @@ startingBoard = Board ((rankToBoard 1 0xff) .|. (rankToBoard 2 0xff))
                       ((rankToBoard 7 0xff) .|. (rankToBoard 8 0xff))
                       ((rankToBoard 1 0x08) .|. (rankToBoard 8 0x08))
                       ((rankToBoard 1 0x10) .|. (rankToBoard 8 0x10))
-                      ((rankToBoard 1 0x48) .|. (rankToBoard 8 0x48))
-                      ((rankToBoard 1 0x84) .|. (rankToBoard 8 0x84))
-                      ((rankToBoard 1 0xf1) .|. (rankToBoard 8 0xf1))
+                      ((rankToBoard 1 0x24) .|. (rankToBoard 8 0x24))
+                      ((rankToBoard 1 0x42) .|. (rankToBoard 8 0x42))
+                      ((rankToBoard 1 0x81) .|. (rankToBoard 8 0x81))
                       ((rankToBoard 2 0xff) .|. (rankToBoard 7 0xff))
                       (True, True, True, True)
                       []
                       True
 
 boardToString :: Board -> [Char]
-boardToString board = boardToString' 63 board []
+boardToString board = boardToString' 0 board []
 
 boardToString' :: Int -> Board -> [Char] -> [Char]
 boardToString' n board accum = case n of
-    -1  -> accum
+    64  -> accum
     _   -> 
         let 
             spacing = if n `mod` 8 == 0 then '\n' else ' '
         in
-        boardToString' (n-1) board (spacing : getPieceAtLocation board n : accum) 
+        boardToString' (n+1) board (getPieceAtLocation board n : spacing : accum) 
 
 getPieceAtLocation :: Board -> Int -> Char
 getPieceAtLocation board idx =
