@@ -54,16 +54,20 @@ whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = wh & ps
 blackPawns :: Board -> Word64
 whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = bl & ps
 
-<<<<<<< HEAD
+
+-- Takes a rank (8 bit), and makes it into a board
+rankToBoard :: Int -> Word8 -> Word64
+rankToBoard i rank = 256 ^ (i - 1) * rank
+
 startingBoard :: Board
-startingBoard = Board 0xffff000000000000
-                      0x000000000000ffff
-                      0x0800000000000008
-                      0x1000000000000010
-                      0x4800000000000048
-                      0x8400000000000084
-                      0xf1000000000000f1
-                      0x00ff00000000ff00
+startingBoard = Board ((rankToBoard 1 0xff) | (rankToBoard 2 0xff))
+                      ((rankToBoard 7 0xff) | (rankToBoard 8 0xff))
+                      ((rankToBoard 1 0x08) | (rankToBoard 8 0x08))
+                      ((rankToBoard 1 0x10) | (rankToBoard 8 0x10))
+                      ((rankToBoard 1 0x48) | (rankToBoard 8 0x48))
+                      ((rankToBoard 1 0x84) | (rankToBoard 8 0x84))
+                      ((rankToBoard 1 0xf1) | (rankToBoard 8 0xf1))
+                      ((rankToBoard 2 0xff) | (rankToBoard 7 0xff))
                       (True, True, True, True)
                       []
                       True
