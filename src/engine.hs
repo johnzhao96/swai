@@ -65,16 +65,16 @@ startingBoard = Board ((rankToBoard 1 0xff) .|. (rankToBoard 2 0xff))
                       ((rankToBoard 7 0xff) .|. (rankToBoard 8 0xff))
                       ((rankToBoard 1 0x08) .|. (rankToBoard 8 0x08))
                       ((rankToBoard 1 0x10) .|. (rankToBoard 8 0x10))
-                      ((rankToBoard 1 0x48) .|. (rankToBoard 8 0x48))
-                      ((rankToBoard 1 0x84) .|. (rankToBoard 8 0x84))
-                      ((rankToBoard 1 0xf1) .|. (rankToBoard 8 0xf1))
+                      ((rankToBoard 1 0x24) .|. (rankToBoard 8 0x24))
+                      ((rankToBoard 1 0x42) .|. (rankToBoard 8 0x42))
+                      ((rankToBoard 1 0x81) .|. (rankToBoard 8 0x81))
                       ((rankToBoard 2 0xff) .|. (rankToBoard 7 0xff))
                       (True, True, True, True)
                       []
                       True
 
 boardToString :: Board -> [Char]
-boardToString board = boardToString' 63 board []
+boardToString board = reverse (boardToString' 63 board [])
 
 boardToString' :: Int -> Board -> [Char] -> [Char]
 boardToString' n board accum = case n of
