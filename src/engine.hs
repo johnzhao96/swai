@@ -2,6 +2,7 @@ module Swai where
 
 import Data.Maybe
 import Data.Word
+import Data.Bits
 
 data Board = Board { whitePieces    :: {-# UNPACK #-} !Word64
                    , blackPieces    :: {-# UNPACK #-} !Word64
@@ -11,50 +12,50 @@ data Board = Board { whitePieces    :: {-# UNPACK #-} !Word64
                    , knights        :: {-# UNPACK #-} !Word64
                    , rooks          :: {-# UNPACK #-} !Word64
                    , pawns          :: {-# UNPACK #-} !Word64
-                   , canCastle      :: (Boolean, Boolean, Boolean, Boolean)
+                   , canCastle      :: (Bool, Bool, Bool, Bool)
                    , enPassant      :: [ Int ]
-                   , currentPlayer  :: Boolean -- White is true 
+                   , currentPlayer  :: Bool -- White is true 
                    } deriving (Show, Eq)
 
 {- Piece Getters -}
 
 whiteKing :: Board -> Word64
-whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = wh & ks
+whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = wh .&. ks
 
 blackKing :: Board -> Word64
-whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = bl & ks
+blackKing (Board wh bl ks qs bs ns rs ps _ _ _) = bl .&. ks
 
 whiteQueens :: Board -> Word64
-whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = wh & qs
+whiteQueens (Board wh bl ks qs bs ns rs ps _ _ _) = wh .&. qs
 
 blackQueens :: Board -> Word64
-whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = bl & qs
+blackQueens (Board wh bl ks qs bs ns rs ps _ _ _) = bl .&. qs
 
 whiteBishops :: Board -> Word64
-whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = wh & bs
+whiteBishops (Board wh bl ks qs bs ns rs ps _ _ _) = wh .&. bs
 
 blackBishops :: Board -> Word64
-whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = bl & bs
+blackBishops (Board wh bl ks qs bs ns rs ps _ _ _) = bl .&. bs
 
 whiteKnights :: Board -> Word64
-whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = wh & ns
+whiteKnights (Board wh bl ks qs bs ns rs ps _ _ _) = wh .&. ns
 
 blackKnights :: Board -> Word64
-whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = bl & ns
+blackKnights (Board wh bl ks qs bs ns rs ps _ _ _) = bl .&. ns
 
 whiteRooks :: Board -> Word64
-whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = wh & rs
+whiteRooks (Board wh bl ks qs bs ns rs ps _ _ _) = wh .&. rs
 
 blackRooks :: Board -> Word64
-whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = bl & rs
+blackRooks (Board wh bl ks qs bs ns rs ps _ _ _) = bl .&. rs
 
 whitePawns :: Board -> Word64
-whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = wh & ps
+whitePawns (Board wh bl ks qs bs ns rs ps _ _ _) = wh .&. ps
 
 blackPawns :: Board -> Word64
-whiteKing (Board wh bl ks qs bs ns rs ps _ _ _) = bl & ps
+blackPawns (Board wh bl ks qs bs ns rs ps _ _ _) = bl .&. ps
 
-<<<<<<< HEAD
+
 startingBoard :: Board
 startingBoard = Board 0xffff000000000000
                       0x000000000000ffff
@@ -68,16 +69,32 @@ startingBoard = Board 0xffff000000000000
                       []
                       True
 
+boardToString :: Board -> [Char]
+boardToString board = boardToString' 63 board []
 
-{-
-boardToString :: Board -> [ Char ]
-boardToString = boardToString' 64
-
-boardToString' :: Int -> Board -> [ Char ]
-boardToString' n board =
+boardToString' :: Int -> Board -> [Char] -> [Char]
+boardToString' n board accum = case n of
+    -1  -> accum
+    _   -> 
+        let 
+            spacing = if n `mod` 8 == 0 then '\n' else ' '
+        in
+        boardToString' (n-1) board (spacing : getPieceAtLocation board n : accum) 
 
 getPieceAtLocation :: Board -> Int -> Char
 getPieceAtLocation board idx =
-    if (whitePieces board) | (blackPieces board) 
--}
+    if      testBit (whitePieces board) idx then fst (getPieceTypeAtLocation board idx)
+    else if testBit (blackPieces board) idx then snd (getPieceTypeAtLocation board idx)
+    else '.' 
+
+getPieceTypeAtLocation :: Board -> Int -> (Char, Char)
+getPieceTypeAtLocation board idx =
+    if      testBit (kings board) idx   then ('k', 'K')
+    else if testBit (queens board) idx  then ('q', 'Q')
+    else if testBit (bishops board) idx then ('b', 'B')
+    else if testBit (knights board) idx then ('n', 'N')
+    else if testBit (rooks board) idx   then ('r', 'R')
+    else if testBit (pawns board) idx   then ('p', 'P')
+    else                                     ('.', '.')
+
 
