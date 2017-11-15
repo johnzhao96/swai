@@ -1,0 +1,2 @@
+# swai
+Haskell Chess Engine
