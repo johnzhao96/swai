@@ -56,15 +56,19 @@ blackPawns :: Board -> Word64
 blackPawns (Board wh bl ks qs bs ns rs ps _ _ _) = bl .&. ps
 
 
+-- Takes a rank (8 bits), and makes it into a bitboard with 0s everywhere but that rank
+rankToBoard :: Int -> Word64 -> Word64
+rankToBoard rank rankContents = shiftL rankContents (8 * (rank - 1))
+
 startingBoard :: Board
-startingBoard = Board 0xffff000000000000
-                      0x000000000000ffff
-                      0x0800000000000008
-                      0x1000000000000010
-                      0x4800000000000048
-                      0x8400000000000084
-                      0xf1000000000000f1
-                      0x00ff00000000ff00
+startingBoard = Board ((rankToBoard 1 0xff) .|. (rankToBoard 2 0xff))
+                      ((rankToBoard 7 0xff) .|. (rankToBoard 8 0xff))
+                      ((rankToBoard 1 0x08) .|. (rankToBoard 8 0x08))
+                      ((rankToBoard 1 0x10) .|. (rankToBoard 8 0x10))
+                      ((rankToBoard 1 0x48) .|. (rankToBoard 8 0x48))
+                      ((rankToBoard 1 0x84) .|. (rankToBoard 8 0x84))
+                      ((rankToBoard 1 0xf1) .|. (rankToBoard 8 0xf1))
+                      ((rankToBoard 2 0xff) .|. (rankToBoard 7 0xff))
                       (True, True, True, True)
                       []
                       True
@@ -96,5 +100,4 @@ getPieceTypeAtLocation board idx =
     else if testBit (rooks board) idx   then ('r', 'R')
     else if testBit (pawns board) idx   then ('p', 'P')
     else                                     ('.', '.')
-
 
