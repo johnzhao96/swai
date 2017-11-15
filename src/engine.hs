@@ -74,16 +74,16 @@ startingBoard = Board ((rankToBoard 1 0xff) .|. (rankToBoard 2 0xff))
                       True
 
 boardToString :: Board -> [Char]
-boardToString board = reverse (boardToString' 63 board [])
+boardToString board = boardToString' 0 board []
 
 boardToString' :: Int -> Board -> [Char] -> [Char]
 boardToString' n board accum = case n of
-    -1  -> accum
+    64  -> accum
     _   -> 
         let 
             spacing = if n `mod` 8 == 0 then '\n' else ' '
         in
-        boardToString' (n-1) board (spacing : getPieceAtLocation board n : accum) 
+        boardToString' (n+1) board (getPieceAtLocation board n : spacing : accum)
 
 getPieceAtLocation :: Board -> Int -> Char
 getPieceAtLocation board idx =
