@@ -73,6 +73,9 @@ startingBoard = Board ((rankToBoard 1 0xff) .|. (rankToBoard 2 0xff))
                       []
                       True
 
+emptyBoard :: Board
+emptyBoard = Board 0 0 0 0 0 0 0 0 (False, False, False, False) [] True
+
 boardToString :: Board -> [Char]
 boardToString board = boardToString' 0 board []
 
@@ -101,3 +104,13 @@ getPieceTypeAtLocation board idx =
     else if testBit (pawns board) idx   then ('p', 'P')
     else                                     ('.', '.')
 
+-- Represent a word (bitmap) as a string.
+wordToString :: Word64 -> String
+wordToString w = foldl (\l n -> bitToString w n : spaceStr n l) [] [0..63]
+    where bitToString w l = if testBit w l then '1' else '0'
+          spaceStr n l = if n `mod` 8 == 0 then '\n':l else l
+
+-- Shift up/down/left/right without worrying about wrapping.
+shiftLU :: Int -> Int -> Word64 -> Word64
+shiftLU l u w = shift w (l + 8*u) .&. maskL l
+    where maskL l = (shift 0xff l .&. 0xff) * 0x0101010101010101
