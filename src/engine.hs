@@ -13,9 +13,23 @@ data Board = Board { whitePieces    :: {-# UNPACK #-} !Word64
                    , rooks          :: {-# UNPACK #-} !Word64
                    , pawns          :: {-# UNPACK #-} !Word64
                    , canCastle      :: (Bool, Bool, Bool, Bool)
-                   , enPassant      :: [ Int ]
-                   , currentPlayer  :: Bool -- White is true 
+                   , enPassant      :: [(Int, Int)]
+                   , currentPlayer  :: Color 
                    } deriving (Show, Eq)
+
+data Piece = Piece { color     :: Color
+                   , pieceType :: PieceType
+                   } deriving (Show, Eq)
+
+data Color = White | Black deriving (Show, Eq)
+
+data PieceType = King
+               | Queen
+               | Bishop
+               | Knight
+               | Rook
+               | Pawn   deriving (Show, Eq)
+
 
 {- Piece Getters -}
 
@@ -56,7 +70,66 @@ blackPawns :: Board -> Word64
 blackPawns (Board wh bl ks qs bs ns rs ps _ _ _) = bl .&. ps
 
 
--- Takes a rank (8 bits), and makes it into a bitboard with 0s everywhere but that rank
+{- Bitboard Getters and Setters with respect to the Piece datatype -}
+
+setBitboard :: Board -> PieceType -> Word64 -> Board
+setBitboard board piecetype bitboard = case piecetype of
+    King   -> board { kings = bitboard }
+    Queen  -> board { queens = bitboard }
+    Bishop -> board { bishops = bitboard }
+    Knight -> board { knights = bitboard }
+    Rook   -> board { rooks = bitboard }
+    Pawn   -> board { pawns = bitboard }
+
+getBitboard :: Board -> PieceType -> Word64
+getBitboard board piecetype = case piecetype of
+    King   -> kings board
+    Queen  -> queens board
+    Bishop -> bishops board
+    Knight -> knights board
+    Rook   -> rooks board
+    Pawn   -> pawns board
+
+getColorBitboard :: Board -> Color -> Word64
+getColorBitboard board color = case color of
+    White -> whitePieces board
+    Black -> blackPieces board
+
+
+{- Color Operations -}
+
+oppColor :: Color -> Color
+oppColor color = case color of
+    White -> Black
+    Black -> White
+
+
+{- Gameplay -}
+
+makeMove' :: Board -> (Piece, Int, Int) -> Board
+makeMove' = makeMoveBitboard'
+
+makeMoveBitboard' :: Board -> (Piece, Int, Int) -> Board
+makeMoveBitboard' board@(Board { whitePieces = wh, blackPieces = bl, currentPlayer = cp }) (piece@(Piece color piecetype), source, destination) = 
+    case color of
+        White -> let (wh', bl', pieceBitboard) = movePiece' (wh, bl, getBitboard board piecetype) source destination in
+                 setBitboard (board { whitePieces = wh', blackPieces = bl', currentPlayer = oppColor cp}) piecetype pieceBitboard
+        Black -> let (bl', wh', pieceBitboard) = movePiece' (bl, wh, getBitboard board piecetype) source destination in
+                 setBitboard (board { whitePieces = wh', blackPieces = bl', currentPlayer = oppColor cp}) piecetype pieceBitboard
+
+movePiece' :: (Word64, Word64, Word64) -> Int -> Int -> (Word64, Word64, Word64)
+movePiece' (currColorBitboard, nextColorBitboard, pieceBitboard) source destination =
+    let
+        currColorBitboard' = setBit (clearBit currColorBitboard source) destination
+        nextColorBitboard' = clearBit nextColorBitboard destination
+        pieceBitboard'     = setBit (clearBit pieceBitboard source) destination
+    in
+    (currColorBitboard', nextColorBitboard', pieceBitboard')
+
+
+{- Generating Boards -}
+
+-- Takes a rank (8 bits), and makes it into a Word64 with 0s everywhere but that rank
 rankToBoard :: Int -> Word64 -> Word64
 rankToBoard rank rankContents = shiftL rankContents (8 * (rank - 1))
 
@@ -71,8 +144,15 @@ startingBoard = Board ((rankToBoard 1 0xff) .|. (rankToBoard 2 0xff))
                       ((rankToBoard 2 0xff) .|. (rankToBoard 7 0xff))
                       (True, True, True, True)
                       []
-                      True
+                      White
 
+
+{- Board Printing Functions -}
+
+printBoard :: Board -> IO ()
+printBoard = putStrLn . boardToString
+
+-- Takes a Board and returns a string representation of the position
 boardToString :: Board -> [Char]
 boardToString board = boardToString' 0 board []
 
@@ -85,6 +165,7 @@ boardToString' n board accum = case n of
         in
         boardToString' (n+1) board (getPieceAtLocation board n : spacing : accum) 
 
+-- Gets the character representation of the piece at a particular index in the Board ('.' if there is no piece)
 getPieceAtLocation :: Board -> Int -> Char
 getPieceAtLocation board idx =
     if      testBit (whitePieces board) idx then fst (getPieceTypeAtLocation board idx)
