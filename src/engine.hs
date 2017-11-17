@@ -76,6 +76,10 @@ startingBoard = Board ((rankToBoard 1 0xff) .|. (rankToBoard 2 0xff))
 emptyBoard :: Board
 emptyBoard = Board 0 0 0 0 0 0 0 0 (False, False, False, False) [] True
 
+-- Shows Board, useful for testing
+showBoard :: Board -> IO ()
+showBoard board = putStrLn $ boardToString board
+
 boardToString :: Board -> [Char]
 boardToString board = boardToString' 0 board []
 
@@ -104,6 +108,7 @@ getPieceTypeAtLocation board idx =
     else if testBit (pawns board) idx   then ('p', 'P')
     else                                     ('.', '.')
 
+
 -- Represent a word (bitmap) as a string.
 wordToString :: Word64 -> String
 wordToString w = foldl (\l n -> bitToString w n : spaceStr n l) [] [0..63]
@@ -114,3 +119,64 @@ wordToString w = foldl (\l n -> bitToString w n : spaceStr n l) [] [0..63]
 shiftLU :: Int -> Int -> Word64 -> Word64
 shiftLU l u w = shift w (l + 8*u) .&. maskL l
     where maskL l = (shift 0xff l .&. 0xff) * 0x0101010101010101
+
+
+-- Operates a bitwise operation on each Word64 in a board
+operateAll :: (Word64 -> Word64) -> Board -> Board
+operateAll f (Board wh bl ks qs bs ns rs ps cas enp cur) = Board (f wh) (f bl) (f ks) (f qs) (f bs) (f ns) (f rs) (f ps) cas enp cur
+
+
+-- Indicate the square you want empty, 0-63
+emptySquare :: Int -> Board -> Board
+emptySquare square board = operateAll ((.&.) (complement (bit square))) board
+
+
+-- Places a given piece of a chosen color on a square, 0-63
+placeKing :: Bool -> Int -> Board -> Board
+placeKing color square (Board wh bl ks qs bs ns rs ps cas enp cur)
+   | color = Board (bit square .|. wh) bl (bit square .|. ks) qs bs ns rs ps cas enp cur
+   | otherwise = Board wh (bit square .|. bl) (bit square .|. ks) qs bs ns rs ps cas enp cur
+
+placeQueen :: Bool -> Int -> Board -> Board
+placeQueen color square (Board wh bl ks qs bs ns rs ps cas enp cur)
+   | color = Board (bit square .|. wh) bl ks (bit square .|. qs) bs ns rs ps cas enp cur
+   | otherwise = Board wh (bit square .|. bl) ks (bit square .|. qs) bs ns rs ps cas enp cur
+
+placeBishop :: Bool -> Int -> Board -> Board
+placeBishop color square (Board wh bl ks qs bs ns rs ps cas enp cur) 
+   | color = Board (bit square .|. wh) bl ks qs (bit square .|. bs) ns rs ps cas enp cur
+   | otherwise = Board wh (bit square .|. bl) ks qs (bit square .|. bs) ns rs ps cas enp cur
+
+placeKnight :: Bool -> Int -> Board -> Board
+placeKnight color square (Board wh bl ks qs bs ns rs ps cas enp cur) 
+   | color = Board (bit square .|. wh) bl ks qs bs (bit square .|. ns) rs ps cas enp cur
+   | otherwise = Board wh (bit square .|. bl) ks qs bs (bit square .|. ns) rs ps cas enp cur
+
+placeRook :: Bool -> Int -> Board -> Board
+placeRook color square (Board wh bl ks qs bs ns rs ps cas enp cur) 
+   | color = Board (bit square .|. wh) bl ks qs bs ns (bit square .|. rs) ps cas enp cur
+   | otherwise = Board wh (bit square .|. bl) ks qs bs ns (bit square .|. rs) ps cas enp cur
+
+placePawn :: Bool -> Int -> Board -> Board
+placePawn color square (Board wh bl ks qs bs ns rs ps cas enp cur) 
+   | color = Board (bit square .|. wh) bl ks qs bs ns rs (bit square .|. ps) cas enp cur
+   | otherwise = Board wh (bit square .|. bl) ks qs bs ns rs (bit square .|. ps) cas enp cur
+
+-- Move data type, consists of type of move, initial square, end square
+data Move = Move {move :: (Int, Int)
+                , kind :: Int}
+
+makeMove :: Move -> Board -> Board
+makeMove (Move (start, end) kind) board
+   | getPieceAtLocation board start == 'K' = placeKing False end (emptySquare start (emptySquare end board))
+   | getPieceAtLocation board start == 'k' = placeKing True end (emptySquare start (emptySquare end board))
+   | getPieceAtLocation board start == 'Q' = placeQueen False end (emptySquare start (emptySquare end board))
+   | getPieceAtLocation board start == 'q' = placeQueen True end (emptySquare start (emptySquare end board))
+   | getPieceAtLocation board start == 'B' = placeBishop False end (emptySquare start (emptySquare end board))
+   | getPieceAtLocation board start == 'b' = placeBishop True end (emptySquare start (emptySquare end board))
+   | getPieceAtLocation board start == 'N' = placeKnight False end (emptySquare start (emptySquare end board))
+   | getPieceAtLocation board start == 'n' = placeKnight True end (emptySquare start (emptySquare end board))
+   | getPieceAtLocation board start == 'R' = placeRook False end (emptySquare start (emptySquare end board))
+   | getPieceAtLocation board start == 'r' = placeRook True end (emptySquare start (emptySquare end board))
+   | getPieceAtLocation board start == 'P' = placePawn False end (emptySquare start (emptySquare end board))
+   | getPieceAtLocation board start == 'p' = placePawn True end (emptySquare start (emptySquare end board))
