@@ -124,6 +124,9 @@ getColorBB board color = case color of
     White -> whitePieces board
     Black -> blackPieces board
 
+getPieceColorBB :: Board -> PieceType -> Color -> Word64
+getPieceColorBB board piecetype color = getPieceTypeBB board piecetype .&. getColorBB board color
+
 
 {- Color Operations -}
 
@@ -175,14 +178,14 @@ startingBoard = Board ((rankToBoard 1 0xff) .|. (rankToBoard 2 0xff))
                       []
                       White
 
+emptyBoard :: Board
+emptyBoard = Board 0 0 0 0 0 0 0 0 (False, False, False, False) [] White
+
 
 {- Board Printing Functions -}
 
 printBoard :: Board -> IO ()
 printBoard = putStrLn . boardToString
-
-emptyBoard :: Board
-emptyBoard = Board 0 0 0 0 0 0 0 0 (False, False, False, False) [] White
 
 -- Takes a Board and returns a string representation of the position
 boardToString :: Board -> [Char]
@@ -232,30 +235,61 @@ shiftLU :: Int -> Int -> Word64 -> Word64
 shiftLU l u w = shift w (l + 8*u) .&. maskL l
     where maskL l = (shift 0xff l .&. 0xff) * 0x0101010101010101
 
+{- Generating moves -}
+{- WIP, very untested - but it typechecks ;) -}
+
+lowestBit :: Word64 -> Word64
+lowestBit x = x .&. (-x)
+
+bitSeq :: Word64 -> [Word64]
+bitSeq 0 = []
+bitSeq x = (\x' -> x' : bitSeq (x `xor` x')) (lowestBit x)
+
+getPieceMoves :: Board -> PieceType -> Color -> [Move]
+getPieceMoves board piecetype color =
+    let
+        attackers = getColorBB board color
+        blockers = getColorBB board (oppColor color)
+        positions = getPieceColorBB board piecetype color
+        move p = PieceMove p (getAttacks piecetype color blockers attackers p)
+    in
+        map move (bitSeq positions)
+
+
+{- Getting 'attacks' [WIP]-}
+
+getAttacks :: PieceType -> Color -> Word64 -> Word64 -> Word64 -> Word64
+getAttacks piece color blockers attackers positions = case piece of
+    King   -> kingAttacks positions blockers
+    Queen  -> undefined
+    Bishop -> undefined
+    Knight -> knightAttacks positions blockers
+    Rook   -> undefined
+    Pawn   -> pawnAttacks positions color blockers attackers
+
 -- In the following: blockers are the same color, attackers are opposite.
--- Maybe these should be renamed as 'knightAttacks' and similar.
 -- The moves themselves will probably use these functions.
-knightMoves :: Word64 -> Word64 -> Word64
-knightMoves n blockers = (shiftLU 1  2 n .|. shiftLU 2 1 n .|.
+knightAttacks :: Word64 -> Word64 -> Word64
+knightAttacks n blockers = (shiftLU 1  2 n .|. shiftLU 2 1 n .|.
                           shiftLU (-1) 2 n .|. shiftLU 2 (-1) n .|.
                           shiftLU 1 (-2) n .|. shiftLU (-2) 1 n .|.
                           shiftLU (-1) (-2) n .|. shiftLU (-2) (-1) n
                          ) .&. complement blockers
 
-kingMoves :: Word64 -> Word64 -> Word64
-kingMoves k blockers = (shiftLU (-1) (-1) k .|. shiftLU (-1) 0 k .|. shiftLU (-1) 1 k .|.
+kingAttacks :: Word64 -> Word64 -> Word64
+kingAttacks k blockers = (shiftLU (-1) (-1) k .|. shiftLU (-1) 0 k .|. shiftLU (-1) 1 k .|.
                         shiftLU 0 (-1) k .|. shiftLU 0 1 k .|.
                         shiftLU 1 (-1) k .|. shiftLU 1 0 k .|. shiftLU 1 1 k
                        ) .&. complement blockers
 
 -- EN PASSANT STUFF NOT IMPLEMENTED YET
 -- Do we need to treat promotion differently? Probably not here.
-pawnMoves :: Bool -> Word64 -> Word64 -> Word64 -> Word64
-pawnMoves isWhite p blockers attackers =
+pawnAttacks :: Word64 -> Color -> Word64 -> Word64 -> Word64
+pawnAttacks p color blockers attackers =
     let
         compb = complement (blockers .|. attackers)
-        dir = if isWhite then 1 else -1
-        hrow = if isWhite then rankToBoard 2 0xff else rankToBoard 7 0xff
+        dir = case color of {White -> 1; Black -> -1}
+        hrow = case color of {White -> rankToBoard 2 0xff; Black -> rankToBoard 7 0xff}
         dmoves = shiftLU 0 dir (shiftLU 0 dir (hrow .&. p) .&. compb)
         smoves = shiftLU 0 dir p
         attacks = (shiftLU (-1) dir p .|. shiftLU 1 dir p) .&. attackers
