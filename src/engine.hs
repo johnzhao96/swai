@@ -125,8 +125,8 @@ getColorBB board color = case color of
     White -> whitePieces board
     Black -> blackPieces board
 
-getPieceColorBB :: Board -> PieceType -> Color -> Word64
-getPieceColorBB board piecetype color = getPieceTypeBB board piecetype .&. getColorBB board color
+getPieceBB :: Board -> Piece -> Word64
+getPieceBB board (Piece color piecetype) = getPieceTypeBB board piecetype .&. getColorBB board color
 
 
 {- Color Operations -}
@@ -213,6 +213,23 @@ getPieceTypeAtLocation board idx =
     else if testBit (pawns board) idx   then Pawn
     else error "Not a valid piece."
 
+getPieceAtBB :: Board -> Word64 -> Piece
+getPieceAtBB board bb =
+    if      bb .&. whitePieces board /= 0 then Piece White (getPieceTypeAtBB board bb)
+    else if bb .&. blackPieces board /= 0 then Piece Black (getPieceTypeAtBB board bb)
+    else error "Not a valid piece bitboard."
+
+-- Get the piece type from a bitboard with EXACTLY 1 SET BIT. No errors will be given.
+getPieceTypeAtBB :: Board -> Word64 -> PieceType
+getPieceTypeAtBB board bb = 
+    if      bb .&. kings board   /= 0x0 then King
+    else if bb .&. queens board  /= 0x0 then Queen
+    else if bb .&. bishops board /= 0x0 then Bishop
+    else if bb .&. knights board /= 0x0 then Knight
+    else if bb .&. rooks board   /= 0x0 then Rook
+    else if bb .&. pawns board   /= 0x0 then Pawn
+    else error "Not a valid piece bitboard."
+
 -- Represent a word (bitmap) as a string.
 wordToString :: Word64 -> String
 wordToString w = foldl (\l n -> bitToString w n : spaceStr n l) [] [0..63]
@@ -237,13 +254,21 @@ bitSeq :: Word64 -> [Word64]
 bitSeq 0 = []
 bitSeq x = (\x' -> x' : bitSeq (x `xor` x')) (lowestBit x)
 
-getPieceMoves :: Board -> PieceType -> Color -> [Move]
-getPieceMoves board piecetype color =
+attackToMove :: Board -> Piece -> Word64 -> Move
+attackToMove board (Piece piecetype color) attackBB = undefined
+
+getPieceMoves :: Board -> Piece -> [Move]
+getPieceMoves board piece@(Piece color piecetype) =
     let
-        attackers = getColorBB board color
-        blockers = getColorBB board (oppColor color)
-        positions = getPieceColorBB board piecetype color
-        move p = PieceMove p (getAttacks piecetype color blockers attackers p)
+        oColor = getColorBB board color
+        sColor = getColorBB board (oppColor color)
+        positions = getPieceBB board piece
+        attacks p = getAttacks piecetype color sColor oColor p
+        move p =
+            let a = attacks p
+            in case a .&. oColor of
+                0 -> PieceMove p a piece
+                p -> PieceCapture p a piece (getPieceAtBB board p)
     in
         map move (bitSeq positions)
 
