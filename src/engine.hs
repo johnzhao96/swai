@@ -46,7 +46,8 @@ data PieceType = King
                | Rook
                | Pawn   deriving (Show, Eq)
 
-data Move = PieceMove Word64 Word64
+data Move = PieceMove Word64 Word64 Piece
+          | PieceCapture Word64 Word64 Piece Piece
           | CastleWK
           | CastleWQ
           | CastleBK
@@ -135,25 +136,16 @@ oppColor color = case color of
 
 {- Gameplay -}
 
-makeMove' :: Board -> (Piece, Int, Int) -> Board
-makeMove' = makeMoveBitboard'
+makeIntMove :: Board -> (Piece, Int, Int) -> Board
+makeIntMove board (piece, srcIdx, dstIdx) = makePieceMove board piece (bit srcIdx) (bit dstIdx)
 
-makeMoveBitboard' :: Board -> (Piece, Int, Int) -> Board
-makeMoveBitboard' board@(Board { whitePieces = wh, blackPieces = bl, currentPlayer = cp }) (piece@(Piece color piecetype), source, destination) = 
-    case color of
-        White -> let (wh', bl', pieceBitboard) = movePiece' (wh, bl, getPieceTypeBB board piecetype) source destination in
-                 setPieceTypeBB (board { whitePieces = wh', blackPieces = bl', currentPlayer = oppColor cp}) piecetype pieceBitboard
-        Black -> let (bl', wh', pieceBitboard) = movePiece' (bl, wh, getPieceTypeBB board piecetype) source destination in
-                 setPieceTypeBB (board { whitePieces = wh', blackPieces = bl', currentPlayer = oppColor cp}) piecetype pieceBitboard
+makePieceMove :: Board -> Piece -> Word64 -> Word64 -> Board
+makePieceMove board@(Board {currentPlayer = cp}) piece@(Piece _ piecetype) src dst =
+    case makePieceMoveBB (getColorBB board cp) (getPieceTypeBB board piecetype) src dst of
+        (colorBB, pieceBB) -> (setPieceTypeBB (setColorBB (board { currentPlayer = oppColor cp }) cp colorBB) piecetype pieceBB) 
 
-movePiece' :: (Word64, Word64, Word64) -> Int -> Int -> (Word64, Word64, Word64)
-movePiece' (currColorBitboard, nextColorBitboard, pieceBitboard) source destination =
-    let
-        currColorBitboard' = setBit (clearBit currColorBitboard source) destination
-        nextColorBitboard' = clearBit nextColorBitboard destination
-        pieceBitboard'     = setBit (clearBit pieceBitboard source) destination
-    in
-    (currColorBitboard', nextColorBitboard', pieceBitboard')
+makePieceMoveBB :: Word64 -> Word64 -> Word64 -> Word64 -> (Word64, Word64)
+makePieceMoveBB colorBB pieceBB src dst = (colorBB .&. (complement src) .|. dst, pieceBB .&. (complement src) .|. dst) 
 
 
 {- Generating Boards -}
