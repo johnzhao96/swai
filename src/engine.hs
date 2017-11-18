@@ -111,6 +111,39 @@ wordToString w = foldl (\l n -> bitToString w n : spaceStr n l) [] [0..63]
           spaceStr n l = if n `mod` 8 == 0 then '\n':l else l
 
 -- Shift up/down/left/right without worrying about wrapping.
+-- Note: In the future it might be better to replace uses of this function
+--       with simple bit operations and hardcoded masks. No need to over
+--       optimize yet though...
 shiftLU :: Int -> Int -> Word64 -> Word64
 shiftLU l u w = shift w (l + 8*u) .&. maskL l
     where maskL l = (shift 0xff l .&. 0xff) * 0x0101010101010101
+
+-- In the following: blockers are the same color, attackers are opposite.
+-- Maybe these should be renamed as 'knightAttacks' and similar.
+-- The moves themselves will probably use these functions.
+knightMoves :: Word64 -> Word64 -> Word64
+knightMoves n blockers = (shiftLU 1  2 n .|. shiftLU 2 1 n .|.
+                          shiftLU (-1) 2 n .|. shiftLU 2 (-1) n .|.
+                          shiftLU 1 (-2) n .|. shiftLU (-2) 1 n .|.
+                          shiftLU (-1) (-2) n .|. shiftLU (-2) (-1) n
+                         ) .&. complement blockers
+
+kingMoves :: Word64 -> Word64 -> Word64
+kingMoves k blockers = (shiftLU (-1) (-1) k .|. shiftLU (-1) 0 k .|. shiftLU (-1) 1 k .|.
+                        shiftLU 0 (-1) k .|. shiftLU 0 1 k .|.
+                        shiftLU 1 (-1) k .|. shiftLU 1 0 k .|. shiftLU 1 1 k
+                       ) .&. complement blockers
+
+-- EN PASSANT STUFF NOT IMPLEMENTED YET
+-- Do we need to treat promotion differently? Probably not here.
+pawnMoves :: Bool -> Word64 -> Word64 -> Word64 -> Word64
+pawnMoves isWhite p blockers attackers =
+    let
+        compb = complement (blockers .|. attackers)
+        dir = if isWhite then 1 else -1
+        hrow = if isWhite then rankToBoard 2 0xff else rankToBoard 7 0xff
+        dmoves = shiftLU 0 dir (shiftLU 0 dir (hrow .&. p) .&. compb)
+        smoves = shiftLU 0 dir p
+        attacks = (shiftLU (-1) dir p .|. shiftLU 1 dir p) .&. attackers
+    in
+        ((smoves .|. dmoves) .&. compb) .|. attacks
