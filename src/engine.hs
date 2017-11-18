@@ -261,10 +261,10 @@ getPieceMoves board piecetype color =
 getAttacks :: PieceType -> Color -> Word64 -> Word64 -> Word64 -> Word64
 getAttacks piece color blockers attackers positions = case piece of
     King   -> kingAttacks positions blockers
-    Queen  -> undefined
-    Bishop -> undefined
+    Queen  -> queenAttacks positions blockers attackers
+    Bishop -> bishopAttacks positions blockers attackers
     Knight -> knightAttacks positions blockers
-    Rook   -> undefined
+    Rook   -> rookAttacks positions blockers attackers
     Pawn   -> pawnAttacks positions color blockers attackers
 
 -- In the following: blockers are the same color, attackers are opposite.
@@ -281,6 +281,35 @@ kingAttacks k blockers = (shiftLU (-1) (-1) k .|. shiftLU (-1) 0 k .|. shiftLU (
                         shiftLU 0 (-1) k .|. shiftLU 0 1 k .|.
                         shiftLU 1 (-1) k .|. shiftLU 1 0 k .|. shiftLU 1 1 k
                        ) .&. complement blockers
+
+-- Kogge-Stone algorithm for sliding pieces.
+-- There are faster algos that come at the cost of precomputing each rank/file
+-- pair and each diagonal/antidiagonal pair.
+koggeStone :: Word64 -> Word64 -> Word64 -> Int -> Int -> Word64
+koggeStone pos blockers attackers l u =
+    let
+        open = complement (blockers .|. shiftLU l u attackers)
+        pos1 = pos .|. (open .&. shiftLU l u pos)
+        open1 = open .&. shiftLU l u open
+        pos2 = pos .|. (open .&. shiftLU (2*l) (2*u) pos)
+        open2 = open .&. shiftLU (2*l) (2*u) open
+        pos3 = pos .|. (open .&. shiftLU (4*l) (4*u) pos)
+    in
+        pos3
+
+rookAttacks :: Word64 -> Word64 -> Word64 -> Word64
+rookAttacks r blockers attackers =
+    let ks = koggeStone r blockers attackers
+    in  ks (-1) 0 .|. ks 1 0 .|. ks 0 (-1) .|. ks 0 1
+
+bishopAttacks :: Word64 -> Word64 -> Word64 -> Word64
+bishopAttacks r blockers attackers =
+    let ks = koggeStone r blockers attackers
+    in  ks 1 1 .|. ks 1 (-1) .|. ks (-1) 1 .|. ks (-1) (-1)
+
+queenAttacks :: Word64 -> Word64 -> Word64 -> Word64
+queenAttacks q blockers attackers = rookAttacks q blockers attackers .|.
+                                    bishopAttacks q blockers attackers
 
 -- EN PASSANT STUFF NOT IMPLEMENTED YET
 -- Do we need to treat promotion differently? Probably not here.
