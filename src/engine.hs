@@ -19,7 +19,23 @@ data Board = Board { whitePieces    :: {-# UNPACK #-} !Word64
 
 data Piece = Piece { color     :: Color
                    , pieceType :: PieceType
-                   } deriving (Show, Eq)
+                   } deriving (Eq)
+
+-- Show instance of pieces
+instance Show Piece where
+    show piece = case piece of
+        Piece White King   -> "\x2654"
+        Piece Black King   -> "\x265A"
+        Piece White Queen  -> "\x2655"
+        Piece Black Queen  -> "\x265B"
+        Piece White Rook   -> "\x2656"
+        Piece Black Rook   -> "\x265C"
+        Piece White Bishop -> "\x2657"
+        Piece Black Bishop -> "\x265D"
+        Piece White Knight -> "\x2658"
+        Piece Black Knight -> "\x265E"
+        Piece White Pawn   -> "\x2659"
+        Piece Black Pawn   -> "\x265F"
 
 data Color = White | Black deriving (Show, Eq)
 
@@ -178,25 +194,29 @@ boardToString' n board accum = case n of
     _   -> 
         let 
             spacing = if n `mod` 8 == 0 then '\n' else ' '
+            displayPiece = case (getPieceAtLocation board n) of
+                Just piece -> show piece
+                Nothing    -> "."
         in
-        boardToString' (n+1) board (getPieceAtLocation board n : spacing : accum)
+        boardToString' (n+1) board (displayPiece ++ (spacing : accum))
+            
 
 -- Gets the character representation of the piece at a particular index in the Board ('.' if there is no piece)
-getPieceAtLocation :: Board -> Int -> Char
+getPieceAtLocation :: Board -> Int -> Maybe Piece
 getPieceAtLocation board idx =
-    if      testBit (whitePieces board) idx then fst (getPieceTypeAtLocation board idx)
-    else if testBit (blackPieces board) idx then snd (getPieceTypeAtLocation board idx)
-    else '.' 
+    if      testBit (whitePieces board) idx then Just (Piece White (getPieceTypeAtLocation board idx))
+    else if testBit (blackPieces board) idx then Just (Piece Black (getPieceTypeAtLocation board idx))
+    else    Nothing
 
-getPieceTypeAtLocation :: Board -> Int -> (Char, Char)
+getPieceTypeAtLocation :: Board -> Int -> PieceType
 getPieceTypeAtLocation board idx =
-    if      testBit (kings board) idx   then ('k', 'K')
-    else if testBit (queens board) idx  then ('q', 'Q')
-    else if testBit (bishops board) idx then ('b', 'B')
-    else if testBit (knights board) idx then ('n', 'N')
-    else if testBit (rooks board) idx   then ('r', 'R')
-    else if testBit (pawns board) idx   then ('p', 'P')
-    else                                     ('.', '.')
+    if      testBit (kings board) idx   then King
+    else if testBit (queens board) idx  then Queen
+    else if testBit (bishops board) idx then Bishop
+    else if testBit (knights board) idx then Knight
+    else if testBit (rooks board) idx   then Rook
+    else if testBit (pawns board) idx   then Pawn
+    else error "Not a valid piece."
 
 -- Represent a word (bitmap) as a string.
 wordToString :: Word64 -> String
