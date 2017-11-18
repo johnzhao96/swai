@@ -36,6 +36,7 @@ data Move = PieceMove Word64 Word64
           | CastleBK
           | CastleBQ
           | EnPassant Word64 Word64
+          | Promotion Word64 Word64 Piece
 
 
 {- Piece Getters -}
