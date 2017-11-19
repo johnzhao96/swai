@@ -308,11 +308,11 @@ koggeStone pos blockers attackers l u =
         open = complement (blockers .|. shiftLU l u attackers)
         pos1 = pos .|. (open .&. shiftLU l u pos)
         open1 = open .&. shiftLU l u open
-        pos2 = pos .|. (open .&. shiftLU (2*l) (2*u) pos)
-        open2 = open .&. shiftLU (2*l) (2*u) open
-        pos3 = pos .|. (open .&. shiftLU (4*l) (4*u) pos)
+        pos2 = pos1 .|. (open1 .&. shiftLU (2*l) (2*u) pos1)
+        open2 = open1 .&. shiftLU (2*l) (2*u) open1
+        pos3 = pos2 .|. (open2 .&. shiftLU (4*l) (4*u) pos2)
     in
-        pos3
+        pos3 .&. open
 
 rookAttacks :: Word64 -> Word64 -> Word64 -> Word64
 rookAttacks r blockers attackers =
