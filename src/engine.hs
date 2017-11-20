@@ -13,7 +13,7 @@ data Board = Board { whitePieces    :: {-# UNPACK #-} !Word64
                    , rooks          :: {-# UNPACK #-} !Word64
                    , pawns          :: {-# UNPACK #-} !Word64
                    , canCastle      :: (Bool, Bool, Bool, Bool)
-                   , enPassant      :: [(Int, Int)]
+                   , enPassant      :: [Move]
                    , currentPlayer  :: Color
                    } deriving (Show, Eq)
 
@@ -53,7 +53,8 @@ data Move = PieceMove Word64 Word64 Piece
           | CastleBK
           | CastleBQ
           | EnPassant Word64 Word64
-          | Promotion Word64 Word64 Piece
+          | Promotion Word64 Word64 Piece 
+          deriving (Show, Eq) 
 
 
 {- Piece Getters -}
@@ -97,8 +98,8 @@ blackPawns (Board wh bl ks qs bs ns rs ps _ _ _) = bl .&. ps
 
 {- Bitboard Getters and Setters with respect to the Piece datatype -}
 
-setPieceTypeBB :: Board -> PieceType -> Word64 -> Board
-setPieceTypeBB board piecetype bitboard = case piecetype of
+setPieceTypeBB :: PieceType -> Word64 -> Board -> Board
+setPieceTypeBB piecetype bitboard board = case piecetype of
     King   -> board { kings = bitboard }
     Queen  -> board { queens = bitboard }
     Bishop -> board { bishops = bitboard }
@@ -106,8 +107,8 @@ setPieceTypeBB board piecetype bitboard = case piecetype of
     Rook   -> board { rooks = bitboard }
     Pawn   -> board { pawns = bitboard }
 
-getPieceTypeBB :: Board -> PieceType -> Word64
-getPieceTypeBB board piecetype = case piecetype of
+getPieceTypeBB :: PieceType -> Board -> Word64
+getPieceTypeBB piecetype board = case piecetype of
     King   -> kings board
     Queen  -> queens board
     Bishop -> bishops board
@@ -115,18 +116,18 @@ getPieceTypeBB board piecetype = case piecetype of
     Rook   -> rooks board
     Pawn   -> pawns board
 
-setColorBB :: Board -> Color -> Word64 -> Board
-setColorBB board color bitboard = case color of
+setColorBB :: Color -> Word64 -> Board -> Board
+setColorBB color bitboard board = case color of
     White -> board { whitePieces = bitboard }
     Black -> board { blackPieces = bitboard }
 
-getColorBB :: Board -> Color -> Word64
-getColorBB board color = case color of
+getColorBB :: Color -> Board -> Word64
+getColorBB color board = case color of
     White -> whitePieces board
     Black -> blackPieces board
 
-getPieceBB :: Board -> Piece -> Word64
-getPieceBB board (Piece color piecetype) = getPieceTypeBB board piecetype .&. getColorBB board color
+getPieceBB :: Piece -> Board -> Word64
+getPieceBB (Piece color piecetype) board = getPieceTypeBB piecetype board .&. getColorBB color board
 
 
 {- Color Operations -}
@@ -139,13 +140,13 @@ oppColor color = case color of
 
 {- Gameplay -}
 
-makeIntMove :: Board -> (Piece, Int, Int) -> Board
-makeIntMove board (piece, srcIdx, dstIdx) = makePieceMove board piece (bit srcIdx) (bit dstIdx)
+makeIntMove :: (Piece, Int, Int) -> Board -> Board
+makeIntMove (piece, srcIdx, dstIdx) = makePieceMove piece (bit srcIdx) (bit dstIdx)
 
-makePieceMove :: Board -> Piece -> Word64 -> Word64 -> Board
-makePieceMove board@(Board {currentPlayer = cp}) piece@(Piece _ piecetype) src dst =
-    case makePieceMoveBB (getColorBB board cp) (getPieceTypeBB board piecetype) src dst of
-        (colorBB, pieceBB) -> (setPieceTypeBB (setColorBB (board { currentPlayer = oppColor cp }) cp colorBB) piecetype pieceBB) 
+makePieceMove :: Piece -> Word64 -> Word64 -> Board -> Board
+makePieceMove piece@(Piece _ piecetype) src dst board@(Board {currentPlayer = cp}) =
+    case makePieceMoveBB (getColorBB cp board) (getPieceTypeBB piecetype board) src dst of
+        (colorBB, pieceBB) -> (setPieceTypeBB piecetype pieceBB) . (setColorBB cp colorBB) $ board {currentPlayer = oppColor cp}
 
 makePieceMoveBB :: Word64 -> Word64 -> Word64 -> Word64 -> (Word64, Word64)
 makePieceMoveBB colorBB pieceBB src dst = (colorBB .&. (complement src) .|. dst, pieceBB .&. (complement src) .|. dst) 
@@ -244,6 +245,7 @@ shiftLU :: Int -> Int -> Word64 -> Word64
 shiftLU l u w = shift w (l + 8*u) .&. maskL l
     where maskL l = (shift 0xff l .&. 0xff) * 0x0101010101010101
 
+
 {- Generating moves -}
 {- WIP, very untested - but it typechecks ;) -}
 
@@ -260,9 +262,9 @@ attackToMove board (Piece piecetype color) attackBB = undefined
 getPieceMoves :: Board -> Piece -> [Move]
 getPieceMoves board piece@(Piece color piecetype) =
     let
-        oColor = getColorBB board color
-        sColor = getColorBB board (oppColor color)
-        positions = getPieceBB board piece
+        oColor = getColorBB color board
+        sColor = getColorBB (oppColor color) board
+        positions = getPieceBB piece board
         attacks p = getAttacks piecetype color sColor oColor p
         move p =
             let a = attacks p
